@@ -17,7 +17,7 @@ import importlib
 import math
 from typing import Optional, Callable, List, Tuple, Sequence
 import numpy as np
-
+import torch.nn.functional as F
 deepspeed_is_installed = importlib.util.find_spec("deepspeed") is not None
 if(deepspeed_is_installed):
     import deepspeed
@@ -180,7 +180,10 @@ class Linear(nn.Linear):
                     final_init_(self.weight)
                 else:
                     raise ValueError("Invalid init string.")
-
+    # def forward(self, input):
+    #     return F.linear(input, 
+    #     weight = self.weight.to(input.dtype), 
+    #     bias = self.bias.to(input.dtype) if self.bias is not None else None)
 
 class LayerNorm(nn.Module):
     def __init__(self, c_in, eps=1e-5):
@@ -193,22 +196,23 @@ class LayerNorm(nn.Module):
         self.bias = nn.Parameter(torch.zeros(c_in))
 
     def forward(self, x): 
-        d = x.dtype
-        deepspeed_is_initialized = (
-            deepspeed_is_installed and 
-            deepspeed.utils.is_initialized()
-        )
-        if(d is torch.bfloat16 and not deepspeed_is_initialized):
-            with torch.cuda.amp.autocast(enabled=False):
-                out = nn.functional.layer_norm(
-                    x, 
-                    self.c_in, 
-                    self.weight.to(dtype=d), 
-                    self.bias.to(dtype=d), 
-                    self.eps
-                )
-        else:
-            out = nn.functional.layer_norm(
+        # d = x.dtype
+        # deepspeed_is_initialized = (
+        #     deepspeed_is_installed and 
+        #     deepspeed.utils.is_initialized()
+        # )
+        # if(d is torch.bfloat16):
+        #     with torch.cuda.amp.autocast(enabled=False):
+        #         out = nn.functional.layer_norm(
+        #             x, 
+        #             self.c_in, 
+        #             self.weight.to(dtype=d), 
+        #             self.bias.to(dtype=d), 
+        #             self.eps
+        #         )
+        # else:
+        # with torch.cuda.amp.autocast(enabled=False):
+        out = nn.functional.layer_norm(
                 x,
                 self.c_in,
                 self.weight,
@@ -225,16 +229,16 @@ def softmax_no_cast(t: torch.Tensor, dim: int = -1) -> torch.Tensor:
         Softmax, but without automatic casting to fp32 when the input is of
         type bfloat16
     """
-    d = t.dtype
-    deepspeed_is_initialized = (
-        deepspeed_is_installed and 
-        deepspeed.utils.is_initialized()
-    )
-    if(d is torch.bfloat16 and not deepspeed_is_initialized):
-        with torch.cuda.amp.autocast(enabled=False):
-            s = torch.nn.functional.softmax(t, dim=dim)
-    else:
-        s = torch.nn.functional.softmax(t, dim=dim)
+    # d = t.dtype
+    # # deepspeed_is_initialized = (
+    # #     deepspeed_is_installed and 
+    # #     deepspeed.utils.is_initialized()
+    # # )
+    # if(d is torch.bfloat16):
+    #     with torch.cuda.amp.autocast(enabled=False):
+    #         s = torch.nn.functional.softmax(t, dim=dim)
+    # else:
+    s = torch.nn.functional.softmax(t, dim=dim)
 
     return s
 
